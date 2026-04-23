@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>КРОССВОРДИК</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body {
+            background: linear-gradient(145deg, #1a252f 0%, #0d1318 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 10px;
+            color: #fff;
+        }
+        .game-container {
+            background: #fff;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            padding: 20px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            color: #2c3e50;
+        }
+        h1 { 
+            margin: 0 0 15px 0; 
+            color: #2c3e50; 
+            font-size: 1.8rem; 
+            font-weight: 800;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            background: #ecf0f1;
+            padding: 8px 16px;
+            border-radius: 40px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .stats span.badge {
+            background: #3498db;
+            color: white;
+            padding: 2px 10px;            border-radius: 12px;
+        }
+        .question-box {
+            background: #fff8e1;
+            border: 2px solid #ffc107;
+            padding: 12px 16px;
+            border-radius: 16px;
+            margin: 15px 0;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .q-text { font-weight: 700; color: #5d4037; font-size: 1rem; }
+        .q-hint { font-size: 0.8rem; color: #888; margin-top: 4px; }
+        
+        .grid-wrap {
+            overflow-x: auto;
+            padding: 10px 0;
+            margin: 10px 0;
+        }
+        table.cross {
+            border-collapse: collapse;
+            margin: 0 auto;
+            background: #fff;
+        }
+        table.cross td {
+            width: 38px;
+            height: 38px;
+            border: 2px solid #95a5a6;
+            padding: 0;
+        }
+        table.cross td.empty { background: #34495e; border-color: #34495e; }
+        table.cross input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #2c3e50;
+            outline: none;
+            background: transparent;
+            font-family: monospace;
+        }
+        table.cross input:focus { background: #e8f5e9; }
+        
+        .msg { 
+            min-height: 22px;             font-weight: 600; 
+            margin: 10px 0; 
+            font-size: 0.9rem;
+        }
+        .msg.ok { color: #27ae60; }
+        .msg.err { color: #c0392b; }
+        
+        .btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        button {
+            border: none;
+            padding: 10px 20px;
+            border-radius: 24px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.96); }
+        .btn-check { background: #27ae60; color: white; }
+        .btn-next { background: #2980b9; color: white; display: none; }
+        .btn-reset { background: #95a5a6; color: white; }
+        
+        @media (max-width: 400px) {
+            table.cross td { width: 32px; height: 32px; }
+            table.cross input { font-size: 1.1rem; }
+            h1 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <h1>КРОССВОРДИК</h1>
+    
+    <div class="stats">
+        <span>Ур: <span id="lvl" class="badge">1</span></span>
+        <span id="diff">Лёгкий</span>
+        <span>Очки: <span id="score">0</span></span>
+    </div>
+
+    <div class="question-box">
+        <div id="q" class="q-text">Загрузка...</div>
+        <div id="qh" class="q-hint"></div>
+    </div>
+
+    <div class="grid-wrap">
+        <table class="cross" id="grid"></table>
+    </div>
+
+    <div id="msg" class="msg"></div>
+    <div class="btns">
+        <button id="btnCheck" class="btn-check">ПРОВЕРИТЬ</button>
+        <button id="btnNext" class="btn-next">ДАЛЬШЕ ➡️</button>
+        <button id="btnReset" class="btn-reset">СБРОС ↺</button>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // ===== БАЗА СЛОВ =====
+    const WORDS = [
+        {w:"АРБУЗ",q:"Полосатая большая ягода"},
+        {w:"БАНАН",q:"Жёлтый фрукт из жарких стран"},
+        {w:"БЕРЕГ",q:"Край земли у воды"},
+        {w:"БУКВА",q:"Знак алфавита"},
+        {w:"ВЕТЕР",q:"Движение воздуха"},
+        {w:"ВОДА",q:"Жидкость, которую мы пьём"},
+        {w:"ГОРА",q:"Высокое возвышение"},
+        {w:"ДОЖДЬ",q:"Капли с неба"},
+        {w:"ДЫНЯ",q:"Жёлтый сладкий плод"},
+        {w:"ЁЖИК",q:"Колючий маленький зверёк"},
+        {w:"ЗАМОК",q:"Дворец или запор на двери"},
+        {w:"ЗИМА",q:"Холодное время года"},
+        {w:"ЗОНТ",q:"Защита от дождя"},
+        {w:"КАНАВА",q:"Углубление в земле для воды"},
+        {w:"КНИГА",q:"Источник знаний"},
+        {w:"КОТ",q:"Домашний пушистый друг"},
+        {w:"КРЫША",q:"Верх дома"},
+        {w:"ЛАМПА",q:"Даёт свет"},
+        {w:"ЛИСА",q:"Рыжая хитрая плутовка"},
+        {w:"ЛУНА",q:"Светит ночью"},
+        {w:"МАМА",q:"Самый родной человек"},
+        {w:"МОРЕ",q:"Большая солёная вода"},
+        {w:"МОСТ",q:"Переправа через реку"},
+        {w:"НЕБО",q:"Голубое над головой"},
+        {w:"НОЖ",q:"Режет хлеб"},
+        {w:"ОКНО",q:"Свет из комнаты на улицу"},
+        {w:"ОГУРЕЦ",q:"Зелёный хрустящий овощ"},
+        {w:"ПАРТА",q:"Школьный стол"},
+        {w:"ПИРОГ",q:"Выпечка с начинкой"},
+        {w:"ПОЕЗД",q:"Вагоны на рельсах"},
+        {w:"РАДУГА",q:"Разноцветная дуга после дождя"},
+        {w:"РОЗА",q:"Цветок с шипами"},
+        {w:"РЫБА",q:"Плавает в воде"},
+        {w:"САХАР",q:"Белый сладкий порошок"},
+        {w:"СВЕЧА",q:"Горит и даёт свет"},
+        {w:"СОБАКА",q:"Верный друг человека"},
+        {w:"СОЛНЦЕ",q:"Светит днём"},
+        {w:"СТОЛ",q:"Мебель для еды"},        {w:"СУМКА",q:"В ней носят вещи"},
+        {w:"ТИГР",q:"Полосатый хищник"},
+        {w:"УТРО",q:"Начало дня"},
+        {w:"ХЛЕБ",q:"Всему голова"},
+        {w:"ЦВЕТ",q:"Красный, синий, зелёный..."},
+        {w:"ЧАЙ",q:"Горячий напиток"},
+        {w:"ЧАСЫ",q:"Показывают время"},
+        {w:"ШАРФ",q:"Греет шею"},
+        {w:"ШКОЛА",q:"Дом знаний"},
+        {w:"ЯБЛОКО",q:"Круглый фрукт"},
+        {w:"ЯГОДА",q:"Малина, клубника..."}
+    ];
+
+    // ===== СОСТОЯНИЕ =====
+    const S = {
+        lvl: 1,
+        score: 0,
+        word: "",
+        clue: "",
+        cells: [], // {r,c,ch}
+        size: 5,
+        done: false
+    };
+
+    // ===== DOM =====
+    const $ = id => document.getElementById(id);
+    const elLvl = $('lvl'), elDiff = $('diff'), elScore = $('score');
+    const elQ = $('q'), elQh = $('qh'), elGrid = $('grid'), elMsg = $('msg');
+    const btnCk = $('btnCheck'), btnNx = $('btnNext'), btnRs = $('btnReset');
+
+    // ===== ЛОГИКА =====
+    function getDiff() {
+        if (S.lvl <= 5) return {name:'Лёгкий', color:'#27ae60'};
+        if (S.lvl <= 10) return {name:'Средний', color:'#d35400'};
+        return {name:'Сложный', color:'#c0392b'};
+    }
+
+    function pickWord() {
+        const diff = getDiff().name;
+        if (diff === 'Лёгкий') {
+            return WORDS[Math.floor(Math.random() * WORDS.length)];
+        }
+        // Генерация для средних/сложных
+        const roots = ["лес","дом","мир","кот","сад","друг","школа","игра","мяч","код","бот","волк","заяц","рысь","лось","зуб","рот","нос","глаз","рука","нога","свет","тень","день","ночь","год","час","путь","река","море","гора","луг","город","ход","бег","удар","старт"];
+        const sfx = ["ик","ок","ек","чик","ник","тель","арь","ак","як","ов"];
+        const root = roots[Math.floor(Math.random()*roots.length)];
+        const suf = diff==='Средний' ? sfx[Math.floor(Math.random()*sfx.length)] : sfx[Math.floor(Math.random()*sfx.length)]+"ов";
+        let w = (root+suf).toUpperCase();
+        if (w.length>8) w=w.slice(0,7);
+        if (w.length<3) w=root.toUpperCase()+"ИК";        return {w, q:`Слово связано с "${root}"`};
+    }
+
+    function buildGrid(word) {
+        S.cells = [];
+        const len = word.length;
+        S.size = Math.max(5, len+2);
+        const r0 = Math.floor(S.size/2);
+        const c0 = Math.floor((S.size-len)/2);
+        for (let i=0; i<len; i++) {
+            S.cells.push({r:r0, c:c0+i, ch:word[i]});
+        }
+    }
+
+    function drawGrid() {
+        let h = '';
+        for (let r=0; r<S.size; r++) {
+            h += '<tr>';
+            for (let c=0; c<S.size; c++) {
+                const cell = S.cells.find(x=>x.r===r && x.c===c);
+                if (cell) h += `<td><input type="text" maxlength="1" data-ch="${cell.ch}"></td>`;
+                else h += `<td class="empty"></td>`;
+            }
+            h += '</tr>';
+        }
+        elGrid.innerHTML = h;
+        elGrid.querySelectorAll('input').forEach(inp => {
+            inp.addEventListener('input', e => {
+                e.target.value = e.target.value.toUpperCase().replace(/[^А-ЯЁ]/g,'');
+            });
+        });
+    }
+
+    function refresh() {
+        const d = getDiff();
+        elLvl.textContent = S.lvl;
+        elDiff.textContent = d.name;
+        elDiff.style.color = d.color;
+        elScore.textContent = S.score;
+        elQ.textContent = S.clue;
+        elQh.textContent = `${S.word.length} букв • по горизонтали`;
+        elMsg.textContent = '';
+        elMsg.className = 'msg';
+        btnCk.style.display = 'inline-block';
+        btnNx.style.display = 'none';
+        S.done = false;
+    }
+
+    function newLevel() {
+        const data = pickWord();        S.word = data.w;
+        S.clue = data.q;
+        buildGrid(S.word);
+        drawGrid();
+        refresh();
+    }
+
+    function check() {
+        if (S.done) return;
+        const inputs = elGrid.querySelectorAll('input');
+        let ans = '', full = true;
+        inputs.forEach(i => { if(!i.value) full=false; ans+=i.value; });
+        if (!full) { elMsg.textContent='⚠ Заполни все клетки'; elMsg.className='msg err'; return; }
+        if (ans === S.word) {
+            S.done = true;
+            const pts = S.word.length * 10;
+            S.score += pts;
+            elScore.textContent = S.score;
+            elMsg.textContent = `🎉 Верно! +${pts}`;
+            elMsg.className = 'msg ok';
+            inputs.forEach(i => i.disabled = true);
+            btnCk.style.display = 'none';
+            btnNx.style.display = 'inline-block';
+        } else {
+            elMsg.textContent = '❌ Неверно, попробуй ещё';
+            elMsg.className = 'msg err';
+        }
+    }
+
+    // ===== СОБЫТИЯ =====
+    btnCk.onclick = check;
+    btnNx.onclick = () => { S.lvl++; newLevel(); };
+    btnRs.onclick = () => { 
+        if (S.done) return;
+        elGrid.querySelectorAll('input').forEach(i => i.value='');
+        elMsg.textContent='';
+        elGrid.querySelector('input')?.focus();
+    };
+
+    // ===== СТАРТ =====
+    newLevel();
+});
+</script>
+</body>
+</html>
